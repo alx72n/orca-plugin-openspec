@@ -166,6 +166,29 @@ test('change.pin saves pin: true in .openspec.yaml, in any listed worktree', asy
   await worker.deactivate()
 })
 
+test('change.pin and change.order only write the file: the panel reload does the one rescan', async () => {
+  let scans = 0
+  const host = mockHost({
+    results: {
+      'workspace.readContext': () => {
+        scans += 1
+        return { branch: 'v3', displayName: 'omrs-v3', terminals: [] }
+      },
+      'workspace.list': () => ({ workspaces: WORKSPACES, truncated: false })
+    }
+  })
+  const worker = await mount(host)
+  await worker.request('changes.get')
+  scans = 0
+  const ref = { workspaceId: 'w-v3', changeName: 'alpha' }
+  assert.equal((await worker.request('change.pin', { ...ref, pin: true })).ok, true)
+  assert.equal((await worker.request('change.pin', { ...ref, pin: false })).ok, true)
+  assert.equal((await worker.request('change.order', { ...ref, order: 2 })).ok, true)
+  assert.equal((await worker.request('change.order', { ...ref, order: null })).ok, true)
+  assert.equal(scans, 0)
+  await worker.deactivate()
+})
+
 test('applyCommand picks the slash style of the agent and asks for omms memory', () => {
   assert.match(applyCommand('claude', 'x'), /^\/opsx:apply x /)
   assert.match(applyCommand('opencode', 'x'), /^\/opsx-apply x /)

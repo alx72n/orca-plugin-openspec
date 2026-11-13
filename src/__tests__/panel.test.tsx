@@ -154,6 +154,39 @@ test('pinned cards sit in a Pinned section above every stage, and the pin button
   await view.unmount()
 })
 
+test('a pressed pin moves the card at once, and the reload puts back what is on disk', async () => {
+  const snap: ChangesSnapshot = {
+    checkedAt: 1,
+    views: [
+      {
+        workspaceId: 'w-v3', name: 'omrs-v3', folder: 'omrs-v3', branch: 'v3', focused: true,
+        changes: [{ name: 'first', order: 1, manual: false, pin: false, stage: 'ready', artefacts: { done: 4, total: 4 }, tasks: { done: 0, total: 1 } }]
+      }
+    ]
+  }
+  let whileWaiting = ''
+  const h = mockHost({
+    requests: {
+      'changes.get': () => snap,
+      'change.pin': async () => {
+        // A slow worker: the board is read while the request is still open.
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        whileWaiting = boardText(view.tree())
+        return { ok: false, message: 'Could not write .openspec.yaml' }
+      }
+    },
+    results: { 'agents.list': () => ({ agents: [] }) }
+  })
+  const view = await mount(panel, { host: h })
+  assert.equal(boardText(view.tree()).includes('"Pinned"'), false)
+  await view.press({ label: 'Pin first' })
+  assert.ok(whileWaiting.includes('"Pinned"') && whileWaiting.includes('Unpin first'))
+  // The write failed, so the reload shows the card unpinned again, with the reason.
+  assert.equal(boardText(view.tree()).includes('"Pinned"'), false)
+  assert.ok(view.find({ text: 'Could not write .openspec.yaml' }))
+  await view.unmount()
+})
+
 test('All worktrees can show one worktree, search by name, and pin a sibling card', async () => {
   const pins: { workspaceId: string; changeName: string; pin: boolean }[] = []
   const row = (name: string, order: number) =>

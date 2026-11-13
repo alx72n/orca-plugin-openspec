@@ -383,13 +383,26 @@ async function setOrder(view: WorkspaceView, change: ChangeRow, value: string): 
 }
 
 async function setPin(view: WorkspaceView, change: ChangeRow): Promise<void> {
+  const pin = !change.pin
+  // Move the card now; the reload below shows what is on disk, so a failed write puts it back.
+  const current = read(snapshot)
+  if (current) {
+    set(snapshot, {
+      ...current,
+      views: current.views.map((v) =>
+        v.workspaceId !== view.workspaceId
+          ? v
+          : { ...v, changes: v.changes?.map((c) => (c.name === change.name ? { ...c, pin } : c)) }
+      )
+    })
+  }
   try {
-    const result = await plugin.request('change.pin', { workspaceId: view.workspaceId, changeName: change.name, pin: !change.pin }, REQUEST)
+    const result = await plugin.request('change.pin', { workspaceId: view.workspaceId, changeName: change.name, pin }, REQUEST)
     set(notice, result.message)
-    await load()
   } catch (error) {
     set(notice, error instanceof Error ? error.message : String(error))
   }
+  await load()
 }
 
 /** The run number on the top right. In the focused worktree, pressing it opens a menu to set the number by hand. */

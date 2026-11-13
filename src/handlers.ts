@@ -154,7 +154,7 @@ export function register(orca: OrcaWorkerApi, io: Io): void {
     } catch (error) {
       return { ok: false, message: error instanceof Error ? error.message : String(error) }
     }
-    last = await look()
+    // No rescan here: the panel reloads the snapshot next, and that reload rescans once.
     return { ok: true, message: order === null ? `${changeName} follows Depends on again` : `${changeName} runs #${order}` }
   })
 
@@ -170,7 +170,7 @@ export function register(orca: OrcaWorkerApi, io: Io): void {
     } catch (error) {
       return { ok: false, message: error instanceof Error ? error.message : String(error) }
     }
-    last = await look()
+    // No rescan here: the panel reloads the snapshot next, and that reload rescans once.
     return { ok: true, message: pin ? `Pinned ${changeName}` : `Unpinned ${changeName}` }
   })
 
